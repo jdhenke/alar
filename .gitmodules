@@ -1,0 +1,3 @@
+[submodule "celestrium"]
+	path = celestrium
+	url = https://github.com/jdhenke/celestrium.git
