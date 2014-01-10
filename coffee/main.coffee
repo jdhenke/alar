@@ -29,10 +29,10 @@ main = (response) ->
     # "uap/ConceptProvider": {}
     "AssertionProvider": {}
     "AssertionSearch":
-      conceptPrefetch: "/get_concepts"
-      relationPrefetch: "/get_relations"
+      conceptPrefetch: "/kb/get_concepts"
+      relationPrefetch: "/kb/get_relations"
 
 $ ->
   $.ajax
-    url: "get_dimensionality_bounds"
+    url: "kb/get_dimensionality_bounds"
     success: main

@@ -1,0 +1,22 @@
+<html>
+    <head>
+        <title>${self.title()}</title>
+        ${self.style()}
+        <script type="text/javascript" src="/js/celestrium.js"></script>
+        ${self.javascript()}
+    </head>
+    <body>
+        <a href="/edit">Edit</a> <a href="/summary">Summary</a> <a href="/explore">Explore</a>
+        ${self.body()}
+    </body>
+</html>
+
+<%def name="title()">
+    Default Title
+</%def>
+
+<%def name="style()">
+</%def>
+
+<%def name="javascript()">
+</%def>

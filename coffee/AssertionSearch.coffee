@@ -63,7 +63,7 @@ class AssertionSearchView extends Backbone.View
       relation: relation
       text: text
     $.ajax
-      url: "get_truth"
+      url: "kb/get_truth"
       data:
         node: JSON.stringify(node)
       success: (response) =>

@@ -7,7 +7,7 @@ module.exports = (grunt) ->
     coffee:
       compileSource:
         files:
-          "www/js/main.js": ["coffee/**/*.coffee"]
+          "server/public/js/main.js": ["coffee/**/*.coffee"]
 
     watch:
       coffee:

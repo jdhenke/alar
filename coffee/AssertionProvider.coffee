@@ -20,7 +20,7 @@ class AssertionProvider extends celestrium.defs["DataProvider"]
     data =
       node: JSON.stringify(node)
       otherNodes: JSON.stringify(nodes)
-    @ajax "get_edges", data, (arrayOfCoeffs) ->
+    @ajax "kb/get_links", data, (arrayOfCoeffs) ->
       callback _.map arrayOfCoeffs, (coeffs, i) ->
         coeffs: coeffs
 
@@ -28,7 +28,7 @@ class AssertionProvider extends celestrium.defs["DataProvider"]
     data =
       nodes: JSON.stringify(nodes)
       numNodes: numNodes
-    @ajax "get_related_nodes", data, callback
+    @ajax "kb/get_linked_nodes", data, callback
 
   # initialize each link's strength before being added to the graph model
   linkFilter: (link) ->
