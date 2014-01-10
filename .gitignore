@@ -74,3 +74,5 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# mac finder
+*.DS_Store
