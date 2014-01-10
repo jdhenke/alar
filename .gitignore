@@ -19,8 +19,8 @@ node_modules
 env
 
 # compiled local javascript
-www/js/main.js
-www/css/main.css
+public/js/main.js
+public/css/main.css
 
 # python
 # Byte-compiled / optimized / DLL files

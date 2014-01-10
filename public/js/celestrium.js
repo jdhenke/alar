@@ -1,1 +1,1 @@
-../../../celestrium/dist/js/celestrium.js
+../../celestrium/dist/js/celestrium.js
