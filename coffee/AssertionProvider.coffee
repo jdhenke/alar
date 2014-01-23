@@ -16,6 +16,10 @@ class AssertionProvider extends celestrium.defs["DataProvider"]
   @uri: "AssertionProvider"
   @needs: needs
 
+  constructor: () ->
+    console.log "AssertionProvider constructor"
+    super()
+
   getLinks: (node, nodes, callback) ->
     data =
       node: JSON.stringify(node)
@@ -25,6 +29,7 @@ class AssertionProvider extends celestrium.defs["DataProvider"]
         coeffs: coeffs
 
   getLinkedNodes: (nodes, callback) ->
+    console.log "getLinkedNodes"
     data =
       nodes: JSON.stringify(nodes)
       numNodes: numNodes

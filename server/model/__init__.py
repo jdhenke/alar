@@ -1,204 +1,171 @@
-from pecan import conf  # noqa
 import divisi2
 from divisi2.sparse import SparseMatrix
+from divisi2 import OrderedSet
+from pysparse.sparse import PysparseMatrix
 
-def create_sparse_matrix(assertions, use_left_features = True):
+# TODO:
+#  - normalization?
+#  - handle left vs. right when given assertion
+#    - when forming matrix
+#    - when truth value is requested
+#  - assertion similarities
 
-  def _get_matrix_cells(assertion):
-    concept1, relation, concept2 = assertion
-    value1 = float(1)
-    row1 = concept1
-    col1 = ('right', relation, concept2)
-    yield value1, row1, col1
-    if use_left_features:
-      value2 = float(1)
-      row2 = concept2
-      col2 = ('left', relation, concept1)
-      yield value2, row2, col2
+def create_sparse_matrix(assertions):
 
-  values, rows, cols = [], [], []
+  # collections to be built up when iterating through the assertions
+  weights, row_indices, col_indices = [], [], []
+  concepts, features  = OrderedSet(), OrderedSet()
+
+  # do a single pass over the assertions
   for assertion in assertions:
-    for value, row, col in _get_matrix_cells(assertion):
-      values.append(value)
-      rows.append(row)
-      cols.append(col)
-  row_labels = set(rows)
-  col_labels = set(cols)
-  sparseMatrix = SparseMatrix((len(row_labels), len(col_labels)), row_labels=row_labels, col_labels=col_labels)
-  assert len(values) == len(rows) and len(rows) == len(cols)
-  for i in xrange(len(values)):
-    value, row, col = values[i], rows[i], cols[i]
-    # TODO: more explicit handling of multiple entries for same cell
-    sparseMatrix.set_entry_named(row, col, value)
-  return sparseMatrix
 
-class KBGraph(object):
+    # parse out components of assertion
+    c1, r, c2 = assertion[:3]
+    f1, f2 = ('right', r, c2), ('left', r, c1)
+    weight = float(assertion[3]) if len(assertion) > 3 else 1.0
 
-  def __init__(self, matrix, dim_list):
+    # add to orderedsets and get indices
+    concepts.extend([c1, c2])
+    features.extend([f1, f2])
+    ic1, ic2 = concepts.index(c1), concepts.index(c2)
+    if1, if2 = features.index(f1), features.index(f2)
+
+    # add indicies and weights
+    row_indices.extend((ic1, ic2))
+    col_indices.extend((if1, if2))
+    weights.extend((weight, weight))
+
+  # create underlying pysparsematrix with accrued weights and indices
+  data = PysparseMatrix(nrow=len(concepts), ncol=len(features))
+  data.put(weights, row_indices, col_indices)
+
+  # retun a nicely labeled sparse matrix
+  return SparseMatrix(data, row_labels=concepts, col_labels=features)
+
+# ADT of the notion of a knowledgebase
+class Knowledgebase(object):
+
+  def __init__(self, matrix, rank=100):
+    # save original args
     self.matrix = matrix
-    self.graphs = {}
-    for numAxes in dim_list:
-      self.graphs[numAxes] = ParticularSVDGraphWrapper(matrix, numAxes)
-    self.concepts = list(self.matrix.row_labels)
-    self.relations = list(set([feature[1] for feature in self.matrix.col_labels]))
-    def indent(obj):
-      output = []
-      for line in str(obj).split("\n"):
-        output.append("    " + line)
-      return "\n".join(output)
+    self.rank = rank
 
-  def get_dimensionality_bounds(self):
-    return {"min": min(self.graphs.keys()), "max": max(self.graphs.keys())}
+    # cache set of relations
+    self.relations = set()
+    for direction, relation, concept in matrix.col_labels:
+      self.relations.add(relation)
 
-  def get_concept_similarity_coeffs(self, a, b):
-    f = lambda graph: graph.get_concept_similarity(a, b)
-    return self._get_coeffs(f)
+    # cache results of SVD at maximum rank
+    self.u, self.s, self.v = matrix.svd(k=rank)
 
-  def get_assertion_similarity_coeffs(self, a, b):
-    f = lambda graph: graph.get_assertion_similarity(a, b)
-    return self._get_coeffs(f)
+  # O(1) size features
 
-  def get_truth_coeffs(self, concept1, concept2, relation):
-    f = lambda graph: graph.get_truth(concept1, concept2, relation)
-    return self._get_coeffs(f)
+  def get_num_assertions(self):
+    return self.matrix.nnz
 
-  def _get_coeffs(self, f):
-    x = [numAxes for numAxes, graph in self.graphs.iteritems()]
-    y = [f(graph) for numAxes, graph in self.graphs.iteritems()]
-    coeffs = numpy.polyfit(x, y, len(x) - 1)
-    return list(coeffs)
+  def get_num_concepts(self):
+    return self.matrix.shape[0]
 
-class ConceptGraph(KBGraph):
+  def get_num_features(self):
+    return self.matrix.shape[1]
 
-  def get_nodes(self):
-    return self.concepts
+  def get_rank(self):
+    return self.rank
 
-  def get_edges(self, concept, otherConcepts):
-    output = []
-    for otherConcept in otherConcepts:
-      a, b = concept["text"], otherConcept["text"]
-      output.append(self.get_concept_similarity_coeffs(a, b))
-    return output
-
-  def get_related_nodes(self, concepts, num_nodes):
-    newConceptsSet = set()
-    subGraph = self.graphs[self.get_dimensionality_bounds()["max"]]
-    for concept in concepts:
-      relatedConcepts = subGraph.get_related_concepts(concept["text"], num_nodes)
-      newConceptsSet |= set([(b, a) for a,b in relatedConcepts])
-    return [{"text": x[1]} for x in sorted(newConceptsSet, reverse=True)[:num_nodes]]
-
-class AssertionGraph(KBGraph):
+  # O(n) list accessors, mostly needed for typeahead
 
   def get_concepts(self):
-    return self.concepts
+    return self.matrix.row_labels
+
+  def get_features(self):
+    return self.matrix.col_labels
 
   def get_relations(self):
     return self.relations
 
-  def get_edges(self, assertion, other_assertions):
-    output = []
-    for a in other_assertions:
-      output.append(self.get_assertion_similarity_coeffs(a, assertion))
-    return output
+  # get contribution of each dimension to the following
 
-  def get_related_nodes(self, assertions, num_nodes):
-    output = {}
-    subGraph = self.graphs[self.get_dimensionality_bounds()["max"]]
-    for assertion in assertions:
-      relation = assertion["relation"]
-      c1 = assertion["concept1"]
-      c2 = assertion["concept2"]
-      related1 = subGraph.get_related_concepts(c1, 20)
-      related2 = subGraph.get_related_concepts(c2, 20)
-      for ca, relatednessA in related1:
-        for cb, relatednessB in related2:
-          text = "%s %s %s" % (ca, relation, cb, )
-          if text in output:
-            continue
-          try:
-            truth_coeffs = self.get_truth_coeffs(ca, cb, relation)
-          except KeyError as e:
-            continue
-          newAssertion = {
-            "concept1": ca,
-            "concept2": cb,
-            "relation": relation,
-            "text": text,
-            "truth_coeffs": truth_coeffs,
-          }
-          relatedness = subGraph.get_assertion_similarity(assertion, newAssertion)
-          output[text] = (relatedness, newAssertion)
-    return [x[1] for x in sorted(output.values(), reverse=True)[:num_nodes]]
+  def get_assertion_truth_delta(self, i, j, d):
+    return self.u[i][d] * self.s[d] * self.v[j][d]
 
-  def get_truth(self, concept1, concept2, relation):
-    truth_coeffs = self.get_truth_coeffs(concept1, concept2, relation)
-    return {"truth_coeffs": truth_coeffs}
+  def get_concept_similarity_delta(self, i, j, d):
+    return self.u[i][d] * (self.s[d] ** 2) * self.u[j][d]
 
-class ParticularSVDGraphWrapper(object):
+  def get_feature_similarity_delta(self, i, j, d):
+    return self.v[i][d] * (self.s[d] ** 2) * self.v[j][d]
 
-  def __init__(self, matrix, dimensionality):
-    concept_axes, axis_weights, feature_axes = matrix.svd(k=dimensionality)
-    self.predict = divisi2.reconstruct(concept_axes,
-                                       axis_weights,
-                                       feature_axes)
-    self.concept_sim = divisi2.reconstruct_activation(concept_axes,
-                                                      axis_weights,
-                                                      post_normalize=True)
-    self.feature_sim = divisi2.reconstruct_activation(feature_axes,
-                                                      axis_weights,
-                                                      post_normalize=True)
-  def get_concept_similarity(self, a, b):
-    return max(0, min(1, self.concept_sim.entry_named(a, b)))
+  # get value of single cell as if SVD was computed at rank=k
 
-  def get_assertion_similarity(self, a1, a2):
-    right_feature1 = ('right', a1["relation"], a1["concept2"])
-    right_feature2 = ('right', a2["relation"], a2["concept2"])
-    left_feature1 = ('left', a1["relation"], a1["concept1"])
-    left_feature2 = ('left', a2["relation"], a2["concept1"])
-    right_sim = self.get_feature_similarity(right_feature1, right_feature2)
-    left_sim = self.get_feature_similarity(left_feature1, left_feature2)
-    def harmonic_mean(s1, s2):
-      if s1 + s2 == 0:
-        return 0
-      else:
-        return 2.0 * s1 * s2 / (s1 + s2)
-    return max(0, min(1, harmonic_mean(right_sim, left_sim)))
+  def get_assertion_truth(self, a, k):
+    c1, r, c2 = a
+    feature = ('right', r, c2)
+    i = self.u.row_index(c1)
+    j = self.v.row_index(feature)
+    return sum([self.get_assertion_truth_delta(i, j, d) for d in xrange(k)])
 
-  def get_feature_similarity(self, f1, f2):
-    try:
-      return max(0, min(1, self.feature_sim.entry_named(f1, f2)))
-    except KeyError:
-      return 0
+  def get_concept_similarity(self, c1, c2, k):
+    i = self.u.row_index(c1)
+    j = self.u.row_index(c2)
+    return sum([self.get_concept_similarity_delta(i, j, d) for d in xrange(k)])
 
-  def get_truth(self, concept1, concept2, relation):
-    try:
-      raw_truth = self.predict.entry_named(concept1, ('right', relation, concept2))
-      # normalize all numbers to (0,1) using a sigmoid function
-      return 1/(1+(math.e **(-3 * raw_truth)))
-    except KeyError:
-      return 0
+  def get_feature_similarity(self, f1, f2, k):
+    i = self.v.row_index(f1)
+    j = self.v.row_index(f2)
+    return sum([self.get_feature_similarity_delta(i, j, d) for d in xrange(k)])
 
-  def get_related_concepts(self, a, n):
-    return self.concept_sim.row_named(a).top_items(n=n)
+  # use value of row as if SVD was computed at rank=k
 
-  def get_related_features(self, f, n):
-    return self.feature_sim.row_named(f).top_items(n=n)
+  def get_similar_concepts(self, c, k, n):
+    concepts = self.get_concepts()
+    get_sim = lambda c2: self.get_concept_similarity(c, c2, k)
+    items = sorted([(get_sim(c2), c2) for c2 in concepts], reverse=True)[:n]
+    return [b for a, b in items]
 
-class KnowledgeBase(AssertionGraph):
+  def get_similar_features(self, f, k, n):
+    features = self.get_features()
+    get_sim = lambda f2: self.get_feature_similarity(f, f2, k)
+    items = sorted([(get_sim(f2), f2) for f2 in features], reverse=True)[:n]
+    return [b for a, b in items]
 
-  def __init__(self, assertions, dimensions):
-    self.assertions = assertions
-    self.dimensions = dimensions
-    sm = create_sparse_matrix(assertions)
-    AssertionGraph.__init__(self, sm, dimensions)
+  # returns list of answer to question at each dimension
 
+  def get_assertion_truth_history(self, a):
+    c1, r, c2 = a
+    feature = ('right', r, c2)
+    i = self.u.row_index(c1)
+    j = self.v.row_index(feature)
+    get_delta = lambda d: self.get_assertion_truth_delta(i, j, d)
+    return self._get_history(get_delta)
+
+  def get_concept_similarity_history(self, c1, c2):
+    i = self.u.row_index(c1)
+    j = self.u.row_index(c2)
+    get_delta = lambda d: self.get_concept_similarity_delta(i, j, d)
+    return self._get_history(get_delta)
+
+  def get_feature_similarity_history(self, f1, f2):
+    i = self.v.row_index(f1)
+    j = self.v.row_index(f2)
+    get_delta = lambda d: self.get_feature_similarity_delta(i, j, d)
+    return self._get_history(get_delta)
+
+  # helper function to accrue cumulative sum of deltas
+
+  def _get_history(self, get_delta):
+    total = 0
+    history = []
+    for d in xrange(self.rank):
+      total += get_delta(d)
+      history.append(total)
+    return history
+
+# global current instance of the knowledgebase
 kb = None
 
 def init_model():
   global kb
-  kb = KnowledgeBase([], [1])
-
-def create_kb(assertions, dimensions):
-  global kb
-  kb = KnowledgeBase(assertions, dimensions)
+  # c4 = divisi2.network.conceptnet_matrix('en').normalize_all()
+  # kb = Knowledgebase(c4, 100)
+  m = create_sparse_matrix([["a", "r", "x"], ["a", "r", "y", 20], ["b", "r", "x", 5]])
+  kb = Knowledgebase(m, 4)
+  print kb.s

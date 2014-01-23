@@ -2,33 +2,26 @@
 
 ## provide definitions for blocks we want to redefine
 <%def name="title()">
-    Welcome to Pecan!
+    Summary of your KB
 </%def>
 
 ## now define the body of the template
-    <header>
-        <h1><img src="/images/logo.png" /></h1>
-    </header>
 
-    <div id="content">
+<h1>Summary</h1>
+<h2>Overview of Original Knowledge</h2>
+<ul>
+  <li>Number of original assertions: ${num_assertions}</li>
+  <li>Number of concepts: ${num_concepts}</li>
+  <li>Number of features: ${num_features}</li>
+</ul>
 
-        <p>This is a sample Pecan project.</p>
+<h1>Edit - TODO</h1>
+<form method="POST" action="/add">
+  <h2>New Assertions</h2>
+  <textarea id="assertions" name="assertions"></textarea>
+  <input disabled="disabled" type="submit" value="Save" />
+</form>
 
-        <p>
-            Instructions for getting started can be found online at <a
-            href="http://pecanpy.org" target="window">pecanpy.org</a>
-        </p>
-
-        <p>
-            ...or you can search the documentation here:
-        </p>
-
-        <form method="POST" action="/">
-            <fieldset>
-                <input name="q" />
-                <input type="submit" value="Search" />
-            <fieldset>
-            <small>Enter search terms or a module, class or function name.</small>
-        </form>
-
-    </div>
+<form method="POST" action="/clear">
+  <input disabled="disabled" type="submit" value="Assertions" />
+</form>

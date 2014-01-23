@@ -1,4 +1,4 @@
-Apollo
+Alar
 ======
 
 > Local web interface to understand inference over custom knowledgebases.
@@ -9,16 +9,16 @@ Apollo
 
 ```bash
 # get the code
-git clone --recursive https://github.com/jdhenke/apollo.git
-cd apollo
+git clone --recursive https://github.com/jdhenke/alar.git
+cd alar
 
 # install dependencies
 npm install
 (cd celestrium && npm install)
 virtualenv env
 source env/bin/activate
-pip install numpy pecan networkx simplejson
-pip install divisi2 csc-pysparse csc-utils
+pip install numpy matplotlib networkx pecan watchdog
+pip install csc-pysparse csc-utils divisi2
 
 # setup pecan
 python setup.py develop

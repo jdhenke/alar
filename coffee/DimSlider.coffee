@@ -46,22 +46,27 @@ class DimSlider extends Backbone.Model
   # set link.strength based on its coefficients and
   # the current dimensionality
   setLinkStrength: (link) ->
-    link.strength = @interpolate(link.coeffs)
+    dim = @dimModel.get("dimensionality")
+    dimFloor = Math.min(parseInt(@dimModel.get("max")) - 1, parseInt(dim))
+    scale = d3.scale.linear()
+      .domain([dimFloor, dimFloor + 1])
+      .range([link.truth_values[dimFloor], link.truth_values[dimFloor + 1]])
+    link.strength = 1 / (1 + Math.exp(0-scale(dim)))
 
-  # reconstruct polynomial from coefficients
-  # from least squares polynomial fit done server side,
-  # and return that polynomial evaluated
-  # at the current dimensionality
-  interpolate: (coeffs) ->
-    degree = coeffs.length
-    strength = 0
-    dimensionality = @dimModel.get("dimensionality")
-    dimMultiple = 1
-    i = coeffs.length
-    while i > 0
-      i -= 1
-      strength += coeffs[i] * dimMultiple
-      dimMultiple *= dimensionality
-    Math.min 1, Math.max(0, strength)
+  # # reconstruct polynomial from coefficients
+  # # from least squares polynomial fit done server side,
+  # # and return that polynomial evaluated
+  # # at the current dimensionality
+  # interpolate: (coeffs) ->
+  #   degree = coeffs.length
+  #   strength = 0
+  #   dimensionality = @dimModel.get("dimensionality")
+  #   dimMultiple = 1
+  #   i = coeffs.length
+  #   while i > 0
+  #     i -= 1
+  #     strength += coeffs[i] * dimMultiple
+  #     dimMultiple *= dimensionality
+  #   Math.min 1, Math.max(0, strength)
 
 celestrium.register DimSlider
