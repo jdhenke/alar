@@ -1,5 +1,6 @@
 needs = _.extend {}, celestrium.defs["DataProvider"].needs
 needs["dimSlider"] = "DimSlider"
+needs["graphView"] = "GraphView"
 
 class CustomProvider extends celestrium.defs["DataProvider"]
 
@@ -17,6 +18,23 @@ class CustomProvider extends celestrium.defs["DataProvider"]
           @graphModel.putNode(node)
       error: (e) ->
         console.log e.responseText
+    @graphView.on "enter:node", () =>
+      @renderNodes()
+    @dimSlider.dimModel.on "change:dimensionality", (dim) =>
+      @renderNodes()
+
+  renderNodes: () ->
+    dimSlider = @dimSlider
+    @graphView.getNodeSelection().filter((d) =>
+        return d.truth_coeffs?
+    ).each((d) ->
+      radius = dimSlider.interpolate(d.truth_coeffs)
+      scale = d3.scale.linear()
+        .domain([0.5,1])
+        .range(1,30)
+      d3.select(this).select("circle").attr("r", 10 * radius)
+      return radius
+    )
 
   getLinks: (node, nodes, callback) ->
     $.ajax

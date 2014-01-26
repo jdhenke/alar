@@ -2,26 +2,103 @@
 
 ## provide definitions for blocks we want to redefine
 <%def name="title()">
-    Summary of your KB
+    Alar
 </%def>
 
-## now define the body of the template
+<%def name="style()">
+<style>
+  /* use every pixel of the screen */
+  body {
+    margin: 0px; margin-left: auto; margin-right: auto; min-width: 1000px; min-height: 750px;
+    font-family: "Arial", sans-serif;
+  }
+  /* make all tables expand and introduce 0 space by default */
+  table { width: 100%; height: 100%; border-spacing: 0px; }
+  /* make sure no space is wasted */
+  td { padding: 0px; vertical-align: top;}
 
-<h1>Summary</h1>
-<h2>Overview of Original Knowledge</h2>
-<ul>
-  <li>Number of original assertions: ${num_assertions}</li>
-  <li>Number of concepts: ${num_concepts}</li>
-  <li>Number of features: ${num_features}</li>
-</ul>
 
-<h1>Edit - TODO</h1>
-<form method="POST" action="/add">
-  <h2>New Assertions</h2>
-  <textarea id="assertions" name="assertions"></textarea>
-  <input disabled="disabled" type="submit" value="Save" />
-</form>
+  #outer-table {min-height: inherit; }
 
-<form method="POST" action="/clear">
-  <input disabled="disabled" type="submit" value="Assertions" />
-</form>
+  #top-row {height: 75%; }
+  #bottom-row {height: 25%;}
+
+  #assertions-cell { width: 20%; background-color: #F0F; }
+  #assertions-cell > div {height: 100%; padding:3px;}
+  #assertions-textarea-cell {height: 100%;}
+  #assertions-textarea-cell > div {height: 100%;}
+  textarea#assertions {height: 100%; width: 100%;}
+  #graph-cell { background-color: #FF0; height: 100%;}
+  #graph {position: relative;}
+
+  #bottom-table * tr > td {width: 25%;}
+  #seed-container {
+    text-align: center;
+    width: 100%;
+  }
+  #seed-container * { font-family: Arial; font-size: 12pt;}
+  #stats-cell { background-color: #00F; }
+  #sliders-cell { background-color: #0F0; }
+  #node-histogram-cell { background-color: #0FF; }
+  #link-histogram-cell {background-color: #F00; }
+</style>
+</%def>
+
+<table id="outer-table" border="0">
+  <tr id="top-row"><td>
+    <table id="top-table" border="0">
+        <td id="assertions-cell">
+          <div>
+            <table id="assertions-table">
+              <tr><td>
+                <h2>Assertions</h2>
+              </td></tr><tr><td id="assertions-textarea-cell">
+              <div>
+                <textarea id="assertions"></textarea>
+              </div>
+              </td></tr><tr><td>
+                <button>Save</button>
+              </td></tr>
+            </table>
+          </div>
+        </div>
+        </td><td>
+          <table>
+            <tr><td id="graph-cell">
+              <div id="graph">
+              </div>
+            </td></tr><tr><td>
+              <div id="seed-container">
+                <input placeholder="concept"/>
+                <input placeholder="relation"/>
+                <input placeholder="concept"/>
+                <select>
+                  <option value="similar">Find similar entities.</option>
+                  <option value="compliment">Fill in the blanks.</option>
+                </select>
+                <button>Go!</button>
+              </div>
+            <td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+  <tr id="bottom-row"><td>
+    <table id="bottom-table" border="0">
+      <tr>
+        <td id="stats-cell">
+          <div>
+            Stats
+          </div>
+        </td><td id="sliders-cell">
+          sliders
+        </td><td id="node-histogram-cell">
+          node histogram
+        </td><td id="link-histogram-cell">
+          link histogram
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>

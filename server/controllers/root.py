@@ -5,7 +5,7 @@ from webob.exc import status_map
 
 # functions which form lists of nodes with specific criteria
 
-num_nodes = 50
+num_nodes = 20
 
 # similarity criteria a.k.a. things similar to seed
 
@@ -19,7 +19,7 @@ def get_similar_feature_nodes(feature, dimension):
 
 def get_similar_assertion_nodes(assertion, dimension):
   assertions = kb.get_similar_assertions(assertion, dimension, num_nodes)
-  nodes = [to_assertion_node(a) for a in assertions]
+  return [to_assertion_node(a) for a in assertions]
 
 # complimentary criteria a.k.a. fill in the blanks for seed.
 # the major difference here is that they represent assertions
@@ -27,24 +27,24 @@ def get_similar_assertion_nodes(assertion, dimension):
 # varies across dimensions
 
 def get_complimentary_features(concept, dimension):
-  features = kb.get_top_features(concept, dimension)
+  features = kb.get_top_features(concept, dimension, num_nodes)
   nodes = []
   for feature in features:
     d, r, c = feature
-    a = concept, r, c if d == 'right' else c, r, concept
+    a = (concept, r, c) if d == 'right' else (c, r, concept)
     node = to_feature_node(feature)
-    node["truth_values"] = kb.get_assertion_truth_history(a)
+    node["truth_coeffs"] = list(kb.get_assertion_truth_coeffs(a))
     nodes.append(node)
   return nodes
 
 def get_complimentary_concepts(feature, dimension):
-  concepts = kb.get_top_concepts(feature, dimension)
+  concepts = kb.get_top_concepts(feature, dimension, num_nodes)
   nodes = []
   d, r, c = feature
   for concept in concepts:
-    a = concept, r, c if d == 'right' else c, r, concept
+    a = (concept, r, c) if d == 'right' else (c, r, concept)
     node = to_concept_node(concept)
-    node["truth_values"] = kb.get_assertion_truth_history(a)
+    node["truth_coeffs"] = list(kb.get_assertion_truth_coeffs(a))
     nodes.append(node)
   return nodes
 
@@ -77,7 +77,7 @@ def to_assertion_node(a):
     "relation": r,
     "concept2": c2,
     "text": "%s %s %s" % (c1, r, c2, ),
-    "truth_values": kb.get_assertion_truth_history((c1, r, c2)),
+    "truth_coeffs": list(kb.get_assertion_truth_coeffs((c1, r, c2))),
   }
 
 # helpful methods to go from dictionary representation to standard tuples
@@ -89,24 +89,24 @@ to_assertion = lambda n: (n["concept1"], n["relation"], n["concept2"],)
 # functions which form links
 
 def get_concept_links(node, nodes):
-  get_sim_history = kb.get_concept_similarity_history
-  return _get_links(node, nodes, to_concept, get_sim_history)
+  get_sim_coeffs = kb.get_concept_similarity_coeffs
+  return _get_links(node, nodes, to_concept, get_sim_coeffs)
 
 def get_feature_links(node, nodes):
-  get_sim_history = kb.get_feature_similarity_history
-  return _get_links(node, nodes, to_feature, get_sim_history)
+  get_sim_coeffs = kb.get_feature_similarity_coeffs
+  return _get_links(node, nodes, to_feature, get_sim_coeffs)
 
 def get_assertion_links(node, nodes):
-  get_sim_history = kb.get_assertion_similarity_history
-  return _get_links(node, nodes, to_node, get_sim_history)
+  get_sim_coeffs = kb.get_assertion_similarity_coeffs
+  return _get_links(node, nodes, to_assertion, get_sim_coeffs)
 
-def _get_links(node, nodes, to_entity, get_sim_history):
+def _get_links(node, nodes, to_entity, get_sim_coeffs):
   links = []
   e1 = to_entity(node)
   for n in nodes:
     e2 = to_entity(n)
     links.append({
-      "truth_values": get_sim_history(e1, e2)
+      "truth_coeffs": list(get_sim_coeffs(e1, e2)),
     })
   return links
 
