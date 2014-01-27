@@ -6,9 +6,9 @@ class DimSlider extends Backbone.Model
     "graphModel": "GraphModel"
     "sliders": "Sliders"
 
-  constructor: (options) ->
+  constructor: () ->
 
-    [@min, @max] = options
+    [@min, @max] = [1, 1]
 
     # ensure backbone model components are initialized
     super()
@@ -27,10 +27,15 @@ class DimSlider extends Backbone.Model
 
     # update link strengths when the dimensionality changes
     @listenTo @dimModel, "change:dimensionality", () =>
-      _.each @graphModel.getLinks(), @setLinkStrength, this
+      _.each @graphModel.getLinks(), @setStrength, this
+      _.each @graphModel.getNodes(), @setStrength, this
       @graphModel.trigger "change:links"
+      @graphModel.trigger "change:nodes"
       @graphModel.trigger "change"
       updateDimStat()
+
+    @listenTo @graphModel, "add:node", @setStrength
+    @listenTo @dimModel, "add:link", @setStrength
 
     # create scale to map dimensionality to slider value in ui
     scale = d3.scale.linear()
@@ -45,8 +50,9 @@ class DimSlider extends Backbone.Model
 
   # set link.strength based on its coefficients and
   # the current dimensionality
-  setLinkStrength: (link) ->
-    link.strength = @interpolate(link.truth_coeffs)
+  setStrength: (obj) ->
+    if obj.truth_coeffs
+      obj.strength = @interpolate(obj.truth_coeffs)
 
   # reconstruct polynomial from coefficients
   # from least squares polynomial fit done server side,
@@ -63,6 +69,9 @@ class DimSlider extends Backbone.Model
       i -= 1
       strength += coeffs[i] * dimMultiple
       dimMultiple *= dimensionality
+    debugger;
     return sigmoid(strength)
+
+  updateRank: (rank) ->
 
 celestrium.register DimSlider

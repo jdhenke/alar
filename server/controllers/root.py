@@ -1,5 +1,5 @@
 import json, traceback
-from server.model import kb
+from server.model import kb, create_kb_from_text
 from pecan import expose, redirect, response
 from webob.exc import status_map
 
@@ -10,6 +10,7 @@ num_nodes = 20
 # similarity criteria a.k.a. things similar to seed
 
 def get_similar_concept_nodes(concept, dimension):
+  print concept, dimension
   concepts = kb.get_similar_concepts(concept, dimension, num_nodes)
   return [to_concept_node(c) for c in concepts]
 
@@ -34,6 +35,7 @@ def get_complimentary_features(concept, dimension):
     a = (concept, r, c) if d == 'right' else (c, r, concept)
     node = to_feature_node(feature)
     node["truth_coeffs"] = list(kb.get_assertion_truth_coeffs(a))
+    node["original"] = kb.is_original_assertion(a)
     nodes.append(node)
   return nodes
 
@@ -45,6 +47,7 @@ def get_complimentary_concepts(feature, dimension):
     a = (concept, r, c) if d == 'right' else (c, r, concept)
     node = to_concept_node(concept)
     node["truth_coeffs"] = list(kb.get_assertion_truth_coeffs(a))
+    node["original"] = kb.is_original_assertion(a)
     nodes.append(node)
   return nodes
 
@@ -78,6 +81,7 @@ def to_assertion_node(a):
     "concept2": c2,
     "text": "%s %s %s" % (c1, r, c2, ),
     "truth_coeffs": list(kb.get_assertion_truth_coeffs((c1, r, c2))),
+    "original": kb.is_original_assertion(a),
   }
 
 # helpful methods to go from dictionary representation to standard tuples
@@ -113,6 +117,15 @@ def _get_links(node, nodes, to_entity, get_sim_coeffs):
 class KBController(object):
 
   @expose('json')
+  def new(self, assertionsText):
+    global kb
+    try:
+      kb = create_kb_from_text(assertionsText)
+    except Exception as e:
+      response.status = 400
+      return {"error": str(e)}
+
+  @expose('json')
   def get_rank(self):
     return kb.get_rank() - 1
 
@@ -123,6 +136,14 @@ class KBController(object):
   @expose('json')
   def get_relations(self):
     return list(kb.get_relations())
+
+  @expose('json')
+  def get_assertions(self):
+    return "\n".join([("%s %s %s" % tuple(a)) for a in kb.get_assertions()])
+
+  @expose('json')
+  def get_rank(self):
+    return kb.get_rank()
 
   @expose('json')
   def get_seed_nodes(self, seed):

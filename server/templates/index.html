@@ -2,10 +2,15 @@
 
 ## provide definitions for blocks we want to redefine
 <%def name="title()">
-    Alar
+  Alar
+</%def>
+
+<%def name="javascript()">
+  <script type="text/javascript" src="/js/main.js"></script>
 </%def>
 
 <%def name="style()">
+
 <style>
   /* use every pixel of the screen */
   body {
@@ -23,13 +28,13 @@
   #top-row {height: 75%; }
   #bottom-row {height: 25%;}
 
-  #assertions-cell { width: 20%; background-color: #F0F; }
+  #assertions-cell { width: 20%; }
   #assertions-cell > div {height: 100%; padding:3px;}
   #assertions-textarea-cell {height: 100%;}
   #assertions-textarea-cell > div {height: 100%;}
   textarea#assertions {height: 100%; width: 100%;}
-  #graph-cell { background-color: #FF0; height: 100%;}
-  #graph {position: relative;}
+  #graph-cell { height: 100%;}
+  #graph {position: relative; height: 100%;}
 
   #bottom-table * tr > td {width: 25%;}
   #seed-container {
@@ -37,10 +42,10 @@
     width: 100%;
   }
   #seed-container * { font-family: Arial; font-size: 12pt;}
-  #stats-cell { background-color: #00F; }
-  #sliders-cell { background-color: #0F0; }
-  #node-histogram-cell { background-color: #0FF; }
-  #link-histogram-cell {background-color: #F00; }
+  #stats-cell { }
+  #sliders-cell { }
+  #node-histogram-cell { }
+  #link-histogram-cell { }
 </style>
 </%def>
 
@@ -57,7 +62,7 @@
                 <textarea id="assertions"></textarea>
               </div>
               </td></tr><tr><td>
-                <button>Save</button>
+                <button id="btn-save">Save</button>
               </td></tr>
             </table>
           </div>
@@ -69,14 +74,14 @@
               </div>
             </td></tr><tr><td>
               <div id="seed-container">
-                <input placeholder="concept"/>
-                <input placeholder="relation"/>
-                <input placeholder="concept"/>
-                <select>
+                <input id="concept1" class="concept-input" placeholder="concept"/>
+                <input id="relation" class="relation-input" placeholder="relation"/>
+                <input id="concept2" class="concept-input" placeholder="concept"/>
+                <select id="seed-type">
                   <option value="similar">Find similar entities.</option>
                   <option value="compliment">Fill in the blanks.</option>
                 </select>
-                <button>Go!</button>
+                <button id="btn-seed">Seed!</button>
               </div>
             <td></tr>
           </table>
@@ -96,7 +101,7 @@
         </td><td id="node-histogram-cell">
           node histogram
         </td><td id="link-histogram-cell">
-          link histogram
+          <h3>Link Strength Distribution</h3>
         </td>
       </tr>
     </table>
