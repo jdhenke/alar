@@ -67,7 +67,7 @@ class Knowledgebase(object):
     self.rank = min(kwargs.get("rank", 100), matrix.shape[0], matrix.shape[1])
 
     # assertions
-    self.assertions = kwargs["assertions"]
+    # self.assertions = kwargs["assertions"]
 
     # cache set of relations
     self.relations = set()
@@ -94,7 +94,7 @@ class Knowledgebase(object):
       print '\tReconstructing matrices'
       similarity_matrices = {}
       for sub_rank in xrange(self.rank, 0, -1):
-        if sub_rank < self.rank: s[sub_rank] = 0
+        if sub_rank < self.rank: s[sub_rank] = 0.0
         # projection of each row vector into eigen space i.e. PCA
         # \[ U \Sigma = A V \]
         pca = u.dot(np.diag(s))
@@ -125,33 +125,33 @@ class Knowledgebase(object):
       pca = u.dot(np.diag(s))
       self.assertion_truths[sub_rank] = ReconstructedMatrix(pca, v.T)
 
-    # create cached results for assertion similarities
-    print "Creating assertion similarity matrices"
-    return
-    # create a matrix with assertions as rows and deltas per dimension as cols
-    assertion_data = []
-    assertion_labels = OrderedSet([])
-    dimension_labels = ["delta @ %i" % (d,) for d in range(1, self.rank + 1)]
-    for i in xrange(self.get_num_concepts()):
-      for j in xrange(self.get_num_features()):
-        c1 = self.matrix.row_labels[i]
-        d, r, c2 = self.matrix.col_labels[j]
-        assertion_label = "%s %s %s" %\
-          ((c1, r, c2, ) if d == "right" else (c2, r, c1, ))
-        if assertion_label in assertion_labels:
-          continue
-        assertion_labels.append(assertion_label)
-        row = []
-        for k in range(self.rank):
-          row.append(self.get_assertion_truth_delta(i, j, k))
-        assertion_data.append(row)
-    self.assertion_matrix = DenseMatrix(assertion_data,
-                                        row_labels=assertion_labels,
-                                        col_labels=dimension_labels)
-    self.assertion_matrix = self.assertion_matrix.normalize_rows()
-    self.assertion_matrix = self.assertion_matrix.col_mean_center()[0]
-    self.assertion_sim_u, self.assertion_sim_s, self.assertion_sim_v =\
-      self.assertion_matrix.svd()
+    # # create cached results for assertion similarities
+    # print "Creating assertion similarity matrices"
+    # return
+    # # create a matrix with assertions as rows and deltas per dimension as cols
+    # assertion_data = []
+    # assertion_labels = OrderedSet([])
+    # dimension_labels = ["delta @ %i" % (d,) for d in range(1, self.rank + 1)]
+    # for i in xrange(self.get_num_concepts()):
+    #   for j in xrange(self.get_num_features()):
+    #     c1 = self.matrix.row_labels[i]
+    #     d, r, c2 = self.matrix.col_labels[j]
+    #     assertion_label = "%s %s %s" %\
+    #       ((c1, r, c2, ) if d == "right" else (c2, r, c1, ))
+    #     if assertion_label in assertion_labels:
+    #       continue
+    #     assertion_labels.append(assertion_label)
+    #     row = []
+    #     for k in range(self.rank):
+    #       row.append(self.get_assertion_truth_delta(i, j, k))
+    #     assertion_data.append(row)
+    # self.assertion_matrix = DenseMatrix(assertion_data,
+    #                                     row_labels=assertion_labels,
+    #                                     col_labels=dimension_labels)
+    # self.assertion_matrix = self.assertion_matrix.normalize_rows()
+    # self.assertion_matrix = self.assertion_matrix.col_mean_center()[0]
+    # self.assertion_sim_u, self.assertion_sim_s, self.assertion_sim_v =\
+    #   self.assertion_matrix.svd()
 
     print "Knowledgebase created."
 
@@ -173,7 +173,7 @@ class Knowledgebase(object):
 
   def is_original_assertion(self, a):
     c1, r, c2 = a
-    return self.matrix.entry_named(c1, ('right', r, c2)) > 0
+    return self.matrix.entry_named(c1, ('right', r, c2)) != 0.0
 
   # entity list accessors, mostly needed for typeahead
 
@@ -347,9 +347,9 @@ kb = None
 
 def init_model():
   global kb
-  kb = create_kb_from_text(open("assertions.txt").read())
-  # c4 = divisi2.network.conceptnet_matrix('en')
-  # kb = Knowledgebase(c4, rank=10)
+  # kb = create_kb_from_text(open("assertions.txt").read())
+  c4 = divisi2.network.conceptnet_matrix('en')
+  kb = Knowledgebase(c4, rank=100)
 
 
 def create_kb_from_text(text):
