@@ -126,6 +126,17 @@ class KBController(object):
       return {"error": str(e)}
 
   @expose('json')
+  def get_node(self, text):
+    components = text.split()
+    if len(components) == 1:
+      return to_concept_node(text)
+    elif len(components) == 3:
+      return to_assertion_node(components)
+    else:
+      response.status = 400
+      return "Couldn't parse to concept or assertion"
+
+  @expose('json')
   def get_rank(self):
     return kb.get_rank() - 1
 
@@ -208,19 +219,25 @@ class KBController(object):
 
   @expose('json')
   def get_similar_nodes(self, nodes, dimension):
-    nodes = json.loads(nodes)
-    output_nodes = []
-    for node in nodes:
-      if node["type"] == "concept":
-        concept = to_concept(node)
-        output.extend(kb.get_similar_concept_nodes(concept, dimension))
-      elif node["type"] == "feature":
-        feature = to_feature(node)
-        output.extend(kb.get_similar_feature_nodes(feature, dimension))
-      elif node["type"] == "assertion":
-        assertion = to_assertion(node)
-        output.extend(kb.get_similar_assertion_nodes(assertion, dimension))
-    return output
+    dimension = int(float(dimension))
+    try:
+      nodes = json.loads(nodes)
+      output = []
+      for node in nodes:
+        if node["type"] == "concept":
+          concept = to_concept(node)
+          output.extend(get_similar_concept_nodes(concept, dimension))
+        elif node["type"] == "feature":
+          feature = to_feature(node)
+          output.extend(get_similar_feature_nodes(feature, dimension))
+        elif node["type"] == "assertion":
+          assertion = to_assertion(node)
+          output.extend(get_similar_assertion_nodes(assertion, dimension))
+      return output
+    except Exception as e:
+      traceback.print_exc()
+      response.status = 400
+      return {"error": str(e)}
 
 class RootController(object):
 

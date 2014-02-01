@@ -76,3 +76,6 @@ docs/_build/
 
 # mac finder
 *.DS_Store
+
+# data files
+*.pickle

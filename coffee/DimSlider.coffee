@@ -8,7 +8,7 @@ class DimSlider extends Backbone.Model
 
   constructor: () ->
 
-    [@min, @max] = [1, 1]
+    [@min, @max] = [1, 99]
 
     # ensure backbone model components are initialized
     super()
@@ -59,7 +59,6 @@ class DimSlider extends Backbone.Model
   # and return that polynomial evaluated
   # at the current dimensionality
   interpolate: (coeffs) ->
-    sigmoid = (x) -> 1 / (1 + Math.exp(0-x))
     degree = coeffs.length
     strength = 0
     dimensionality = @dimModel.get("dimensionality")
@@ -69,8 +68,7 @@ class DimSlider extends Backbone.Model
       i -= 1
       strength += coeffs[i] * dimMultiple
       dimMultiple *= dimensionality
-    debugger;
-    return sigmoid(strength)
+    return Math.min(strength, 1)
 
   updateRank: (rank) ->
 
