@@ -96,9 +96,8 @@ class KB
         return d.truth_coeffs?
     ).each((d) ->
       truth = dimSlider.interpolate(d.truth_coeffs)
-      console.log d.text, truth
       d3.select(this).select("circle")
-        .attr("r", Math.min(Math.max(1, 10*truth), 10))
+        .attr("r", Math.min(Math.max(1, 100*truth), 10))
         .attr("fill", if d.original then "black" else "green")
       d3.select(this).select("text")
         .attr("font-size", Math.min(Math.max(10, 15*truth), 15))
