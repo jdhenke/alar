@@ -24,19 +24,19 @@ def to_assertion_node(a):
     "concept2": c2,
     "text": "%s %s %s" % (c1, r, c2, ),
     "truth_coeffs": list(kb.get_assertion_truth_coeffs((c1, r, c2))),
-    "original": kb.is_original_assertion(a),
+    "original": kb.is_original_assertion(tuple(a)),
   }
 
 to_concept = lambda n: n["name"]
 to_assertion = lambda n: (n["concept1"], n["relation"], n["concept2"],)
 
 def get_similar_concept_nodes(concept, dimension):
-  concepts = kb.get_similar_concepts(concept, dimension, num_nodes)
-  return [to_concept_node(c) for c in concepts]
+  return map(to_concept_node,
+             kb.get_similar_concepts(concept, dimension, num_nodes))
 
 def get_similar_assertion_nodes(assertion, dimension):
-  assertions = kb.get_similar_assertions(assertion, dimension, num_nodes)
-  return [to_assertion_node(a) for a in assertions]
+  return map(to_assertion_node,
+             kb.get_similar_assertions(assertion, dimension, num_nodes))
 
 # functions which form links
 
@@ -49,14 +49,9 @@ def get_assertion_links(node, nodes):
   return _get_links(node, nodes, to_assertion, get_sim_coeffs)
 
 def _get_links(node, nodes, to_entity, get_sim_coeffs):
-  links = []
   e1 = to_entity(node)
-  for n in nodes:
-    e2 = to_entity(n)
-    links.append({
-      "truth_coeffs": list(get_sim_coeffs(e1, e2)),
-    })
-  return links
+  return map(lambda e2: {"truth_coeffs": list(get_sim_coeffs(e1, e2))},
+             map(to_entity, nodes))
 
 ## actual controllers
 
