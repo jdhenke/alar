@@ -26,18 +26,17 @@ class Knowledgebase(object):
   def get_similar_concepts(self, c, k, n):
     reduced_concept_pca = self.concept_pca[:,:k].normalize_rows()
     reduced_concept_vector = reduced_concept_pca.row_named(c)
-    sims = reduced_concept_pca.dot(reduced_concept_vector.T)
+    sims = reduced_concept_pca.dot(reduced_concept_vector)
     for c, _ in sims.top_items(n=n): yield c
 
   def get_similar_assertions(self, a, k, n):
-    concept_pca, v = self.assertion_svd
-    i, j = concept_pca.row_index(a[0]), v.row_index(('right', ) + a[1:])
-    concept_vecs = concept_pca[:,:k].normalize_rows()
-    feature_vecs = v[:,:k].normalize_rows()
-    top_feature_items = feature_vecs.dot(concept_vecs[i]).top_items(n=n//2)
-    top_concept_items = concept_vecs.dot(feature_vecs[j]).top_items(n=n//2)
-    for c, _ in top_concept_items: yield (c,) + a[1:]
-    for f, _ in top_feature_items: yield a[:1] + f[1:]
+    us, v = self.assertion_svd
+    i, j = us.row_index(a[0]), v.row_index(('right', ) + a[1:])
+    concept_vecs, feature_vecs = us[:,:k], v[:,:k]
+    for f, _ in feature_vecs.dot(concept_vecs[i]).top_items(n=n//2):
+      yield a[:1] + f[1:]
+    for c, _ in concept_vecs.dot(feature_vecs[j]).top_items(n=n//2):
+      yield (c,) + a[1:]
 
   ### get coefficients of polynomial in dimensionality
 
@@ -59,9 +58,12 @@ class Knowledgebase(object):
     return self.concept_pca.row_named(c)
 
   def _get_assertion_vector(self, a):
-    concept_pca, v = self.assertion_svd
-    i, j = concept_pca.row_index(a[0]), v.row_index(('right', ) + a[1:])
-    return concept_pca[i] * v[j]
+    try:
+      us, v = self.assertion_svd
+      i, j = us.row_index(a[0]), v.row_index(('right', ) + a[1:])
+      return us[i] * v[j]
+    except KeyError:
+      return np.zeros(self.rank)
 
   def _interpolate(self, f):
     values = map(f, xrange(1, self.rank + 1))
