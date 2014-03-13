@@ -39,6 +39,7 @@ class KB
     "dimSlider": "DimSlider"
     "graphView": "GraphView"
     "keyListener": "KeyListener"
+    "alarProvider": "AlarProvider"
 
   constructor: () ->
     @keyListener.on "down:191", (e) ->
@@ -53,8 +54,16 @@ class KB
             "text": $("#search").val()
           success: (node) =>
             @graphModel.filterNodes (n) ->
-              return n.type == node.type
+              false
+            node.x = $(window).width() / 2
+            node.y = $(window).height() / 2
+            node.fixed = true
             @graphModel.putNode(node)
+            @alarProvider.getLinkedNodes [node], (nodes) =>
+              _.each nodes, (node) =>
+                @graphModel.putNode node
+            @graphView.getNodeSelection()
+              .classed("centered", (n) -> "centered" if n is node)
           error: (e) ->
             console.log(e.responseText)
         $("#search").blur()

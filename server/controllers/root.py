@@ -3,7 +3,7 @@ from pecan import expose, redirect, response
 from webob.exc import status_map
 from server.model import kb
 
-num_nodes = 40
+num_nodes = 10
 
 # helpful methods to go from standard tuple representation to
 # dictionary form used for JSON responses
