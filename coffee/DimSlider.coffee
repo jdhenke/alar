@@ -6,9 +6,9 @@ class DimSlider extends Backbone.Model
     "graphModel": "GraphModel"
     "sliders": "Sliders"
 
-  constructor: () ->
+  constructor: (@max) ->
 
-    [@min, @max] = [1, 99]
+    @max -= 1
 
     # ensure backbone model components are initialized
     super()
@@ -37,12 +37,11 @@ class DimSlider extends Backbone.Model
     @listenTo @graphModel, "add:node", @setStrength
     @listenTo @dimModel, "add:link", @setStrength
 
-    # create scale to map dimensionality to slider value in ui
-    scale = d3.scale.linear()
-      .domain([@min, @max])
-      .range([0, 100])
-
     # add dimensionality slider into ui
+        # create scale to map dimensionality to slider value in ui
+    scale = d3.scale.linear()
+      .domain([0, @max])
+      .range([0, 100])
     dimModel = @dimModel
     @sliders.addSlider "Dimensionality", scale(@dimModel.get("dimensionality")), (val) ->
       dimModel.set "dimensionality", scale.invert val

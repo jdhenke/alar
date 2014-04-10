@@ -7,14 +7,15 @@ warnings.simplefilter('ignore', np.RankWarning)
 class Knowledgebase(object):
 
   def __init__(self):
-    self.rank = 100
     print "Loading original assertions..."
     self.original_assertions = pickle.load(open("assertions.pickle"))
     print "Loading PCA tuned for concepts..."
     self.concept_pca = pickle.load(open("concept_pca.pickle"))
     print "Loading SVD tuned for assertions..."
     self.assertion_svd = pickle.load(open("assertion_svd.pickle"))
+    self.rank = self.concept_pca.shape[1]
     print "Knowledgebase created."
+
 
   ### get origin of assertion
 

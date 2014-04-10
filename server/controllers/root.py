@@ -101,6 +101,10 @@ class KBController(object):
       response.status = 400
       return {"error": str(e)}
 
+  @expose('json')
+  def get_rank(self):
+    return kb.rank
+
 class RootController(object):
 
   @expose(template="index.html")

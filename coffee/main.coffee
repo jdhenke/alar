@@ -117,15 +117,18 @@ celestrium.register KB
 # finally do something
 
 $ ->
-  celestrium.init
-    "KeyListener": {}
-    "GraphModel": {}
-    "GraphView": {}
-    "Stats": {el: document.querySelector "#stats-cell"}
-    "KB": {}
-    "Sliders": {el: document.querySelector "#sliders"}
-    "ForceSliders": {}
-    "DimSlider": {}
-    "LinkDistribution": {el: document.querySelector "#link-strength-histogram"}
-    "AlarProvider": {}
-    "NodeSelection": {}
+  $.ajax
+    url: "kb/get_rank"
+    success: (rank) ->
+      celestrium.init
+        "KeyListener": {}
+        "GraphModel": {}
+        "GraphView": {}
+        "Stats": {el: document.querySelector "#stats-cell"}
+        "KB": {}
+        "Sliders": {el: document.querySelector "#sliders"}
+        "ForceSliders": {}
+        "DimSlider": rank
+        "LinkDistribution": {el: document.querySelector "#link-strength-histogram"}
+        "AlarProvider": {}
+        "NodeSelection": {}
