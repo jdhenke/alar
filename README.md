@@ -82,3 +82,6 @@ Once your KB has been prepped, run `. driver` from inside the repo and go to [ht
 ## Using the Interface
 
 See this [illustrated tutorial of Alar](https://docs.google.com/document/d/19KUwApiWCTEXaLUh_mrC_aCe-1VazFbHiaaFxZ6ImAo/edit?usp=sharing).
+
+![image](https://cloud.githubusercontent.com/assets/1418690/2674280/aeb1a960-c0fe-11e3-9867-49b8a3292729.png)
+
