@@ -1,43 +1,95 @@
-needs = _.extend {}, celestrium.defs["DataProvider"].needs
-needs["dimSlider"] = "DimSlider"
-needs["graphView"] = "GraphView"
+needs = _.extend {}, celestrium.defs["DataSource"].needs
+needs["rankSlider"] = "RankSlider"
+needs["graph"] = "Graph"
 
-class AlarProvider extends celestrium.defs["DataProvider"]
+class AlarProvider extends celestrium.defs["DataSource"]
 
   @uri: "AlarProvider"
   @needs: needs
 
-  getLinks: (node, nodes, callback) ->
+  searchAround: (node, callback) ->
+    cleanNode = (node) -> _.pick node, "text"
     $.ajax
-      url: "kb/get_links"
+      url: "/kb/search_around"
       data:
-        seed: @seed
-        node: JSON.stringify node
-        nodes: JSON.stringify nodes
-      success: (links) =>
-        _.each links, (link) =>
-          @dimSlider.setStrength(link)
-        callback(links)
-      error: (e) ->
-        console.log e.responseText
-
-  getLinkedNodes: (nodes, callback) ->
-    $.ajax
-      url: "kb/get_similar_nodes"
-      data:
-        nodes: JSON.stringify nodes
-        dimension: @dimSlider.dimModel.get("dimensionality")
-      success: callback
+        node: JSON.stringify cleanNode(node)
+        nodes: JSON.stringify _.map(@graph.nodes, cleanNode)
+        rank: @rankSlider.get("rank")
+      type: "POST"
 
 celestrium.register AlarProvider
+
+class RankSlider extends Backbone.Model
+
+  @uri: "RankSlider"
+  @needs:
+    "graph": "Graph"
+    "sliders": "Sliders"
+
+  constructor: (max) ->
+
+    max -= 1
+
+    # ensure backbone model components are initialized
+    super()
+
+    # create internal state to maintain current rank
+    @set "rank", max
+
+    # update link strengths when the rank changes
+    @on "change:rank", () =>
+      _.each @graph.links, @setStrength, this
+      _.each @graph.nodes, @setStrength, this
+      @graph.links.trigger "change", this
+      @graph.nodes.trigger "change", this
+
+    @listenTo @graph.links, "change", (caller) =>
+      if caller is not this
+        _.each @graph.links, @setStrength, this
+        _.each @graph.nodes, @setStrength, this
+
+    # add rank slider into ui
+    # create scale to map rank to slider value in ui
+    scale = d3.scale.linear()
+      .domain([0, max])
+      .range([0, 100])
+    that = this
+    @sliders.addSlider "Rank", scale(@get("rank")), (val) ->
+      that.set "rank", scale.invert val
+      $(this).blur()
+
+  # set link.strength based on its coefficients and
+  # the current rank
+  setStrength: (obj) ->
+    if obj.truth_coeffs
+      obj.strength = @interpolate(obj.truth_coeffs)
+
+  # reconstruct polynomial from coefficients
+  # from least squares polynomial fit done server side,
+  # and return that polynomial evaluated
+  # at the current rank
+  interpolate: (coeffs) ->
+    degree = coeffs.length
+    strength = 0
+    rank = @get("rank")
+    dimMultiple = 1
+    i = coeffs.length
+    while i > 0
+      i -= 1
+      strength += coeffs[i] * dimMultiple
+      dimMultiple *= rank
+    return Math.min(strength, 1)
+
+  updateRank: (rank) ->
+
+celestrium.register RankSlider
 
 class KB
 
   @uri: "KB"
   @needs:
-    "graphModel": "GraphModel"
-    "dimSlider": "DimSlider"
-    "graphView": "GraphView"
+    "graph": "Graph"
+    "rankSlider": "RankSlider"
     "keyListener": "KeyListener"
     "alarProvider": "AlarProvider"
 
@@ -53,58 +105,34 @@ class KB
           data:
             "text": $("#search").val()
           success: (node) =>
-            @graphModel.filterNodes (n) ->
-              false
+            @graph.nodes.clear()
             node.x = $(window).width() / 2
             node.y = $(window).height() / 2
             node.fixed = true
-            @graphModel.putNode(node)
-            @alarProvider.getLinkedNodes [node], (nodes) =>
+            @graph.nodes.push node
+            @alarProvider.searchAround node, (nodes, links) =>
               _.each nodes, (node) =>
-                @graphModel.putNode node
-            @graphView.getNodeSelection()
+                @graph.nodes.push node
+              _.each links, (link) =>
+                @graph.links.push link
+            @graph.getNodeSelection()
               .classed("centered", (n) -> "centered" if n is node)
           error: (e) ->
             console.log(e.responseText)
         $("#search").blur()
 
-    # register seed button
-    $("#btn-seed").click () =>
-      @graphModel.filterNodes () -> false
-      get_option = (id) ->
-        val = $(id).val()
-        if val.length is 0 then return null else return val
-      seed =
-        seedType: $("#seed-type").val()
-        concept1: get_option("#concept1")
-        relation: get_option("#relation")
-        concept2: get_option("#concept2")
-        dimension: 1
-      $.ajax
-        url: "kb/get_seed_nodes"
-        data: {seed: JSON.stringify(seed)}
-        success: (nodes) =>
-          _.each nodes, (node) =>
-            @graphModel.putNode node
-        error: (e) ->
-          console.log e.responseText
-      $.ajax
-        url: "kb/get_rank"
-        success: (rank) ->
-          @dimSlider.dimModel.set("max", rank)
-          @dimSlider.dimModel.trigger("change:max")
     # format nodes
-    @graphView.on "enter:node", () =>
+    @graph.on "enter:node", () =>
       @renderNodes()
-    @dimSlider.dimModel.on "change:dimensionality", (dim) =>
+    @rankSlider.on "change:rank", (dim) =>
       @renderNodes()
 
   renderNodes: () ->
-    dimSlider = @dimSlider
-    @graphView.getNodeSelection().filter((d) =>
+    rankSlider = @rankSlider
+    @graph.getNodeSelection().filter((d) =>
         return d.truth_coeffs?
     ).each((d) ->
-      truth = dimSlider.interpolate(d.truth_coeffs)
+      truth = rankSlider.interpolate(d.truth_coeffs)
       d3.select(this).select("circle")
         .attr("r", Math.min(Math.max(1, 10*truth), 10))
         .attr("fill", if d.original then "black" else "green")
@@ -122,13 +150,10 @@ $ ->
     success: (rank) ->
       celestrium.init
         "KeyListener": {}
-        "GraphModel": {}
-        "GraphView": {}
-        "Stats": {el: document.querySelector "#stats-cell"}
+        "Graph": {el: document.querySelector "#graph"}
         "KB": {}
         "Sliders": {el: document.querySelector "#sliders"}
         "ForceSliders": {}
-        "DimSlider": rank
-        "LinkDistribution": {el: document.querySelector "#link-strength-histogram"}
+        "RankSlider": rank
+        "LinkDistro": {el: document.querySelector "#link-strength-histogram"}
         "AlarProvider": {}
-        "NodeSelection": {}

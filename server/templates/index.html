@@ -6,7 +6,17 @@
 </%def>
 
 <%def name="javascript()">
-  <script type="text/javascript" src="/js/main.js"></script>
+  <!-- include celestrium dependencies -->
+  <script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+  <script type="text/javascript" src="js/underscore-min.js"></script>
+  <script type="text/javascript" src="js/backbone-min.js"></script>
+  <script type="text/javascript" src="js/d3.min.js"></script>
+
+  <!-- load celestrium -->
+  <script type="text/javascript" src="js/celestrium.js"></script>
+
+  <!-- load main script -->
+  <script type="text/javascript" src="js/main.js"></script>
 </%def>
 
 <%def name="style()">

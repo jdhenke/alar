@@ -8,6 +8,9 @@ module.exports = (grunt) ->
       compileSource:
         files:
           "public/js/main.js": ["coffee/**/*.coffee"]
+        options:
+          sourceMap: true
+          sourceRoot: ""
 
     watch:
       coffee:
