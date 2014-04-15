@@ -25,9 +25,9 @@ def main():
   print "Normalizing for assertions..."
   write_assertion_svd(raw_matrix, rank)
   print "Saving row labels..."
-  save(row_labels, "row_labels.pkl")
+  save(row_labels, "concepts.pkl")
   print "Saving column labels..."
-  save(col_labels, "col_labels.pkl")
+  save(col_labels, "features.pkl")
   print "Saving assertions..."
   save(assertions, "assertions.pkl")
   print "Done."
@@ -80,9 +80,7 @@ def write_svd(norm_matrix, rank, prefix):
   s = s[::-1][:rank]
   v = vt.T[:,::-1][:,:rank]
   for mat, name in ((u, 'u'), (s, 's'), (v, 'v')):
-    fp = np.memmap("%s%s.npy" % (prefix, name, ), dtype='float32', shape=mat.shape, mode='w+')
-    fp[:] = mat[:]
-    del fp
+    np.save("%s_%s.npy" % (prefix, name, ), mat)
 
 def normalize_rows(mat):
   return mat

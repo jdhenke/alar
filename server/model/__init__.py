@@ -1,4 +1,4 @@
-import pickle, warnings
+import heapq, pickle, warnings
 import numpy as np
 
 norm = np.linalg.norm
@@ -7,15 +7,13 @@ warnings.simplefilter('ignore', np.RankWarning)
 class Knowledgebase(object):
 
   def __init__(self):
-    print "Loading original assertions..."
-    self.original_assertions = pickle.load(open("assertions.pickle"))
-    print "Loading PCA tuned for concepts..."
-    self.concept_pca = pickle.load(open("concept_pca.pickle"))
-    print "Loading SVD tuned for assertions..."
-    self.assertion_svd = pickle.load(open("assertion_svd.pickle"))
-    self.rank = self.concept_pca.shape[1]
-    print "Knowledgebase created."
-
+    self.original_assertions = pickle.load(open("assertions.pkl"))
+    self.concepts = pickle.load(open("concepts.pkl"))
+    self.features = pickle.load(open("features.pkl"))
+    self.concept_svd = load_svd("concept")
+    self.feature_svd = load_svd("feature")
+    self.assertion_svd = load_svd("assertion")
+    self.rank = self.concept_svd[0].shape[1]
 
   ### get origin of assertion
 
@@ -25,19 +23,44 @@ class Knowledgebase(object):
   ### get lists of similar entities
 
   def get_similar_concepts(self, c, k, n):
-    reduced_concept_pca = self.concept_pca[:,:k].normalize_rows()
-    reduced_concept_vector = reduced_concept_pca.row_named(c)
+    u, s, v = self.concept_svd
+    reduced_concept_pca = normalize_rows((u*s)[:,:k])
+    concept_index = self.concepts.index(c)
+    reduced_concept_vector = reduced_concept_pca[concept_index]
     sims = reduced_concept_pca.dot(reduced_concept_vector)
-    for c, _ in sims.top_items(n=n): yield c
+    return top_items(sims, self.concepts, n)
+
+  def get_similar_features(self, f, k, n):
+    u, s, v = self.feature_svd
+    reduced_feature_pca = normalize_rows((v*s)[:,:k])
+    feature_index = self.features.index(f)
+    reduced_feature_vector = reduced_feature_pca[feature_index]
+    sims = reduced_feature_pca.dot(reduced_feature_vector)
+    return top_items(sims, self.features, n)
 
   def get_similar_assertions(self, a, k, n):
-    us, v = self.assertion_svd
-    i, j = us.row_index(a[0]), v.row_index(('right', ) + a[1:])
-    concept_vecs, feature_vecs = us[:,:k], v[:,:k]
-    for f, _ in feature_vecs.dot(concept_vecs[i]).top_items(n=n//2):
-      yield a[:1] + f[1:]
-    for c, _ in concept_vecs.dot(feature_vecs[j]).top_items(n=n//2):
-      yield (c,) + a[1:]
+    c1, r, c2 = a
+    u, s, v = self.assertion_svd
+    vecs = []
+    labels = []
+    for c in self.concepts:
+      vecs.append(self._get_assertion_vector((c, r, c2)))
+      labels.append((c, r, c2))
+      vecs.append(self._get_assertion_vector((c1, r, c)))
+      labels.append((c1, r, c))
+    for feature in self.features:
+      d, r, c = feature
+      if d == 'right':
+        vecs.append(self._get_assertion_vector((c1, r, c)))
+        labels.append((c1, r, c))
+      else:
+        vecs.append(self._get_assertion_vector((c, r, c2)))
+        labels.append((c, r, c2))
+    red_assertion_vecs = normalize_rows(np.asarray(vecs)[:,:k])
+    assertion_index = labels.index(a)
+    reduced_assertion_vector = red_assertion_vecs[assertion_index]
+    sims = red_assertion_vecs.dot(reduced_assertion_vector)
+    return top_items(sims, labels, n)
 
   ### get coefficients of polynomial in dimensionality
 
@@ -56,26 +79,57 @@ class Knowledgebase(object):
   ### helper functions
 
   def _get_concept_vector(self, c):
-    return self.concept_pca.row_named(c)
+    u, s, v = self.concept_svd
+    try:
+      index = self.concepts.index(c)
+      return (u*s)[index]
+    except ValueError:
+      return np.zeros(self.rank)
+
+  def _get_feature_vector(self, f):
+    u, s, v = self.feature_svd
+    try:
+      index = self.features.index(f)
+      return (v*s)[index]
+    except ValueError:
+      return np.zeros(self.rank)
 
   def _get_assertion_vector(self, a):
+    u, s, v = self.assertion_svd
+    c1, r, c2 = a
     try:
-      us, v = self.assertion_svd
-      i, j = us.row_index(a[0]), v.row_index(('right', ) + a[1:])
-      return us[i] * v[j]
-    except KeyError:
+      concept_index = self.concepts.index(c1)
+      feature_index = self.features.index(('right', r, c2))
+      return (u*s)[concept_index] * v[feature_index]
+    except ValueError:
       return np.zeros(self.rank)
 
   def _interpolate(self, f):
     values = map(f, xrange(1, self.rank + 1))
     return np.polyfit(range(self.rank), values, self.rank - 1)
 
+def load_svd(prefix):
+  u = np.load(prefix + "_u.npy", mmap_mode="r")
+  s = np.load(prefix + "_s.npy", mmap_mode="r")
+  v = np.load(prefix + "_v.npy", mmap_mode="r")
+  return (u, s, v)
+
 def norm_dot(v1, v2):
   norm1, norm2 = map(lambda v: norm(v) if norm(v) > 0 else 1.0, (v1, v2))
   return v1.dot(v2) / (norm1 * norm2)
 
+def top_items(values, labels, n):
+  assert len(values) == len(labels)
+  items = zip(0-values, labels)
+  heapq.heapify(items)
+  for _ in xrange(min(len(labels), n)):
+    yield heapq.heappop(items)[1]
+
+def normalize_rows(mat):
+  norms = map(np.linalg.norm, mat)
+  return mat / np.array(norms)[:,None]
+
 kb = None
 def init_model():
-
   global kb
   kb = Knowledgebase()

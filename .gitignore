@@ -78,4 +78,5 @@ docs/_build/
 *.DS_Store
 
 # data files
-*.pickle
+*.pkl
+*.npy

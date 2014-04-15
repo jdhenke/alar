@@ -7,15 +7,30 @@ class AlarProvider extends celestrium.defs["DataSource"]
   @uri: "AlarProvider"
   @needs: needs
 
-  searchAround: (node, callback) ->
-    cleanNode = (node) -> _.pick node, "text"
+  cleanNode: (node) -> _.pick node, "name", "type", "concept1", "relation", "concept2"
+
+  addNodes: (node, callback) ->
     $.ajax
-      url: "/kb/search_around"
+      url: "/kb/get_nodes"
       data:
-        node: JSON.stringify cleanNode(node)
-        nodes: JSON.stringify _.map(@graph.nodes, cleanNode)
+        node: JSON.stringify(@cleanNode(node))
         rank: @rankSlider.get("rank")
+      success: callback
+  addLinks: (node, callback) ->
+    $.ajax
+      url: "/kb/get_links"
+      data:
+        node: JSON.stringify @cleanNode(node)
+        nodes: JSON.stringify _.map(@graph.nodes, @cleanNode)
       type: "POST"
+      success: callback
+  searchAround: (node) ->
+    @addNodes node, (nodes) =>
+      _.each nodes, (node) =>
+        present = _.some @graph.nodes, (currentNode) ->
+          node.text == currentNode.text
+        if not present
+          @graph.nodes.push(node)
 
 celestrium.register AlarProvider
 
@@ -33,20 +48,33 @@ class RankSlider extends Backbone.Model
     # ensure backbone model components are initialized
     super()
 
-    # create internal state to maintain current rank
-    @set "rank", max
+    paintNodes = () =>
+      s = @graph.getNodeSelection().filter (d) -> d.truth_coeffs?
+      s.select("circle")
+        .attr "r", (d) =>
+          return Math.max(2, Math.min(10, d.strength * 20))
+        .attr("fill", (d) -> if d.original then "black" else "green")
+
+    @graph.on "enter:node", paintNodes
 
     # update link strengths when the rank changes
     @on "change:rank", () =>
-      _.each @graph.links, @setStrength, this
-      _.each @graph.nodes, @setStrength, this
+      _.each @graph.links, (link) =>
+        @setStrength link
+      _.each @graph.nodes, (node) =>
+        @setStrength node
       @graph.links.trigger "change", this
       @graph.nodes.trigger "change", this
+      paintNodes()
+      @graph.force.start()
 
-    @listenTo @graph.links, "change", (caller) =>
-      if caller is not this
-        _.each @graph.links, @setStrength, this
-        _.each @graph.nodes, @setStrength, this
+
+    @set "rank", max
+
+    @listenTo @graph.links, "add", (link) =>
+      @setStrength link
+    @listenTo @graph.nodes, "add", (node) =>
+      @setStrength node
 
     # add rank slider into ui
     # create scale to map rank to slider value in ui
@@ -78,9 +106,7 @@ class RankSlider extends Backbone.Model
       i -= 1
       strength += coeffs[i] * dimMultiple
       dimMultiple *= rank
-    return Math.min(strength, 1)
-
-  updateRank: (rank) ->
+    return Math.max(0, Math.min(strength, 1))
 
 celestrium.register RankSlider
 
@@ -106,39 +132,17 @@ class KB
             "text": $("#search").val()
           success: (node) =>
             @graph.nodes.clear()
+            @graph.links.clear()
             node.x = $(window).width() / 2
             node.y = $(window).height() / 2
             node.fixed = true
             @graph.nodes.push node
-            @alarProvider.searchAround node, (nodes, links) =>
-              _.each nodes, (node) =>
-                @graph.nodes.push node
-              _.each links, (link) =>
-                @graph.links.push link
             @graph.getNodeSelection()
               .classed("centered", (n) -> "centered" if n is node)
+            @alarProvider.searchAround(node)
           error: (e) ->
             console.log(e.responseText)
         $("#search").blur()
-
-    # format nodes
-    @graph.on "enter:node", () =>
-      @renderNodes()
-    @rankSlider.on "change:rank", (dim) =>
-      @renderNodes()
-
-  renderNodes: () ->
-    rankSlider = @rankSlider
-    @graph.getNodeSelection().filter((d) =>
-        return d.truth_coeffs?
-    ).each((d) ->
-      truth = rankSlider.interpolate(d.truth_coeffs)
-      d3.select(this).select("circle")
-        .attr("r", Math.min(Math.max(1, 10*truth), 10))
-        .attr("fill", if d.original then "black" else "green")
-      d3.select(this).select("text")
-        .attr("font-size", Math.min(Math.max(10, 15*truth), 15))
-    )
 
 celestrium.register KB
 

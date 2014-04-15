@@ -30,13 +30,13 @@ def to_assertion_node(a):
 to_concept = lambda n: n["name"]
 to_assertion = lambda n: (n["concept1"], n["relation"], n["concept2"],)
 
-def get_similar_concept_nodes(concept, dimension):
+def get_similar_concept_nodes(concept, rank):
   return map(to_concept_node,
-             kb.get_similar_concepts(concept, dimension, num_nodes))
+             kb.get_similar_concepts(concept, rank, num_nodes))
 
-def get_similar_assertion_nodes(assertion, dimension):
+def get_similar_assertion_nodes(assertion, rank):
   return map(to_assertion_node,
-             kb.get_similar_assertions(assertion, dimension, num_nodes))
+             kb.get_similar_assertions(assertion, rank, num_nodes))
 
 # functions which form links
 
@@ -62,6 +62,8 @@ class KBController(object):
     components = text.split()
     if len(components) == 1:
       return to_concept_node(text)
+    elif len(components) == 2:
+      return to_feature_node(text)
     elif len(components) == 3:
       return to_assertion_node(components)
     else:
@@ -83,19 +85,16 @@ class KBController(object):
       return {"error": str(e)}
 
   @expose('json')
-  def get_similar_nodes(self, nodes, dimension):
+  def get_nodes(self, node, rank):
     try:
-      dimension = int(float(dimension))
-      nodes = json.loads(nodes)
-      output = []
-      for node in nodes:
-        if node["type"] == "concept":
-          concept = to_concept(node)
-          output.extend(get_similar_concept_nodes(concept, dimension))
-        elif node["type"] == "assertion":
-          assertion = to_assertion(node)
-          output.extend(get_similar_assertion_nodes(assertion, dimension))
-      return output
+      rank = int(float(rank))
+      node = json.loads(node)
+      if node["type"] == "concept":
+        concept = to_concept(node)
+        return get_similar_concept_nodes(concept, rank)
+      elif node["type"] == "assertion":
+        assertion = to_assertion(node)
+        return get_similar_assertion_nodes(assertion, rank)
     except Exception as e:
       traceback.print_exc()
       response.status = 400
