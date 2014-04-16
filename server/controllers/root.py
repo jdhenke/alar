@@ -59,7 +59,7 @@ class KBController(object):
 
   @expose('json')
   def get_node(self, text):
-    components = text.split()
+    components = text.lower().split()
     if len(components) == 1:
       return to_concept_node(text)
     elif len(components) == 2:
