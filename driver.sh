@@ -1,6 +1,6 @@
 #!/bin/sh
 
-grunt --gruntfile celestrium/Gruntfile.coffee &&
-grunt &&
+./node_modules/.bin/grunt --gruntfile celestrium/Gruntfile.coffee &&
+./node_modules/.bin/grunt &&
 source env/bin/activate &&
 pecan serve config.py
