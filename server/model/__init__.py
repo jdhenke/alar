@@ -128,4 +128,5 @@ def normalize_rows(mat):
 kb = None
 def init_model():
   global kb
+  print "Loading KB from disk..."
   kb = Knowledgebase()
