@@ -31,7 +31,7 @@ Download this repo and install its dependencies.
 
 ```bash
 # get the code
-git clone --recursive -b user-testing https://github.com/jdhenke/alar.git
+git clone --recursive https://github.com/jdhenke/alar.git
 cd alar
 
 # install npm dependencies
