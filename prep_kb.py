@@ -15,7 +15,7 @@ def main():
   assertions = get_assertions(fname)
   print "%i unique assertions found." % (len(assertions), )
   print "Creating raw assertion matrix..."
-  raw_matrix, row_labels, col_labels = create_matrix(assertions)
+  raw_matrix, row_labels, col_labels, relations = create_matrix(assertions)
   rank = min(len(row_labels)-1, len(col_labels)-1, 100)
   print "Using maximum rank of %i." % (rank, )
   print "Normalizing for concepts..."
@@ -24,6 +24,8 @@ def main():
   write_feature_svd(raw_matrix, rank)
   print "Normalizing for assertions..."
   write_assertion_svd(raw_matrix, rank)
+  print "Saving relations..."
+  save(relations, "relations.pkl")
   print "Saving row labels..."
   save(row_labels, "concepts.pkl")
   print "Saving column labels..."
@@ -34,19 +36,20 @@ def main():
 
 def get_assertions(fname):
   assertions = set()
-  normalize_text = lambda text: text.lower().replace(" ", "_")
+  normalized_text = lambda text: text.lower().replace(" ", "_")
   with open(fname, 'rb') as csvfile:
     r = csv.reader(csvfile)
     for row in r:
-      assert(len(row) == 3), "invalid number of columns"
-      assertions.add(tuple(map(normalize_text, row)))
+      assert (len(row) in (3,4)), "invalid number of columns"
+      assertions.add(tuple(map(normalized_text, row)))
   return assertions
 
 def create_matrix(assertions, right=True, left=True):
   row_labels, col_labels = [], []
   concept_dict, feature_dict = {}, {}
   rows, cols, data = [], [], []
-  def add_entry(concept, feature):
+  relations = set()
+  def add_entry(concept, feature, truth):
     if concept not in concept_dict:
       concept_dict[concept] = len(row_labels)
       row_labels.append(concept)
@@ -55,12 +58,17 @@ def create_matrix(assertions, right=True, left=True):
       col_labels.append(feature)
     rows.append(concept_dict[concept])
     cols.append(feature_dict[feature])
-    data.append(1.0)
-  for c1, r, c2 in assertions:
-    if right: add_entry(c1, ('right', r, c2))
-    if left: add_entry(c2, ('left', r, c1))
+    data.append(float(truth))
+  for a in assertions:
+    c1, r, c2 = a[:3]
+    truth = 1.0
+    if len(a) == 4:
+      truth = a[3]
+    if right: add_entry(c1, ('right', r, c2), truth)
+    if left: add_entry(c2, ('left', r, c1), truth)
+    relations.add(r)
   mat = coo_matrix((data, (rows, cols))).tocsc()
-  return mat, row_labels, col_labels
+  return mat, row_labels, col_labels, relations
 
 def write_concept_svd(raw_matrix, rank):
   norm_matrix = normalize_rows(raw_matrix)

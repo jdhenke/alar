@@ -3,7 +3,7 @@ from pecan import expose, redirect, response
 from webob.exc import status_map
 from server.model import kb
 
-num_nodes = 40
+num_nodes = 20
 
 # helpful methods to go from standard tuple representation to
 # dictionary form used for JSON responses
@@ -13,6 +13,16 @@ def to_concept_node(concept):
     "type": "concept",
     "name": concept,
     "text": concept,
+  }
+
+def to_feature_node(feature):
+  d, r, c = feature
+  return {
+    "type": "feature",
+    "direction": d,
+    "relation": r,
+    "concept": c,
+    "text": "%s %s" % ((r, c) if d == 'right' else (c, r))
   }
 
 def to_assertion_node(a):
@@ -28,11 +38,16 @@ def to_assertion_node(a):
   }
 
 to_concept = lambda n: n["name"]
+to_feature = lambda n: (n["direction"], n["relation"], n["concept"])
 to_assertion = lambda n: (n["concept1"], n["relation"], n["concept2"],)
 
 def get_similar_concept_nodes(concept, rank):
   return map(to_concept_node,
              kb.get_similar_concepts(concept, rank, num_nodes))
+
+def get_similar_feature_nodes(feature, rank):
+  return map(to_feature_node,
+             kb.get_similar_features(feature, rank, num_nodes))
 
 def get_similar_assertion_nodes(assertion, rank):
   return map(to_assertion_node,
@@ -43,6 +58,10 @@ def get_similar_assertion_nodes(assertion, rank):
 def get_concept_links(node, nodes):
   get_sim_coeffs = kb.get_concept_similarity_coeffs
   return _get_links(node, nodes, to_concept, get_sim_coeffs)
+
+def get_feature_links(node, nodes):
+  get_sim_coeffs = kb.get_feature_similarity_coeffs
+  return _get_links(node, nodes, to_feature, get_sim_coeffs)
 
 def get_assertion_links(node, nodes):
   get_sim_coeffs = kb.get_assertion_similarity_coeffs
@@ -59,11 +78,14 @@ class KBController(object):
 
   @expose('json')
   def get_node(self, text):
-    components = text.lower().split()
+    components = tuple(text.lower().split())
     if len(components) == 1:
       return to_concept_node(text)
     elif len(components) == 2:
-      return to_feature_node(text)
+      if components[0] in kb.relations:
+        return to_feature_node(('right',) + components)
+      else:
+        return to_feature_node(('left',) + components[::-1])
     elif len(components) == 3:
       return to_assertion_node(components)
     else:
@@ -77,6 +99,8 @@ class KBController(object):
       nodes = json.loads(nodes)
       if node["type"] == "concept":
         return get_concept_links(node, nodes)
+      elif node["type"] == "feature":
+        return get_feature_links(node, nodes)
       elif node["type"] == "assertion":
         return get_assertion_links(node, nodes)
     except Exception as e:
@@ -92,6 +116,9 @@ class KBController(object):
       if node["type"] == "concept":
         concept = to_concept(node)
         return get_similar_concept_nodes(concept, rank)
+      elif node["type"] == "feature":
+        feature = to_feature(node)
+        return get_similar_feature_nodes(feature, rank)
       elif node["type"] == "assertion":
         assertion = to_assertion(node)
         return get_similar_assertion_nodes(assertion, rank)
@@ -101,8 +128,12 @@ class KBController(object):
       return {"error": str(e)}
 
   @expose('json')
-  def get_rank(self):
-    return kb.rank
+  def init(self):
+    return {
+      "rank": kb.rank,
+      "concepts": kb.concepts,
+      "relations": list(kb.relations),
+    }
 
 class RootController(object):
 

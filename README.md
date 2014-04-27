@@ -11,6 +11,8 @@ Here's how to get the software, setup an existing or custom KB then access the i
 
 Make you sure have virtualenv, npm and node installed.
 
+Additionally, I've found it easier to install numpy and scipy globally and include system site packages in my virtualenv.
+
 > Here's my current setup on Mac OS X 10.9.2 for reference.
 >
 >     $ npm --version
@@ -19,6 +21,11 @@ Make you sure have virtualenv, npm and node installed.
 >     1.10.1
 >     $ node --version
 >     v0.10.3
+>     $ python -c "import numpy; print numpy.version.version"
+>     1.8.1
+>     $ python -c "import scipy; print scipy.version.version"
+>     0.14.0rc1
+
 
 Download this repo and install its dependencies.
 
@@ -27,53 +34,35 @@ Download this repo and install its dependencies.
 git clone --recursive -b user-testing https://github.com/jdhenke/alar.git
 cd alar
 
-# install dependencies
+# install npm dependencies
 npm install
 (cd celestrium && npm install)
-virtualenv env
-source env/bin/activate
-pip install numpy networkx pecan
-pip install csc-pysparse csc-utils divisi2
-
-# setup pecan
-python setup.py develop
-```
-> If installing numpy, csc-pysparse and divisi2 all fail on a mac, I ran this ([thanks stackoverflow](http://stackoverflow.com/a/22411624)):
->
->     sudo ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install --upgrade numpy
->     sudo ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install --upgrade csc-pysparse
->     sudo ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install --upgrade divisi2
-
-Install the grunt-cli globally.
-
-```bash
 sudo npm install -g grunt-cli
+
+# install python dependencies
+virtualenv env --system-site-packages
+source env/bin/activate
+pip install pecan
+python setup.py develop
 ```
 
 ### Setting up a KB
 
-Use `prep_kb.py` to prepare a KB. Do `python prep_kb.py -h` for help text.
-
-Be sure to enable the virtual environment by first typing `source env/bin/active`.
-
-To use Conceptnet 4, do this:
+To use your own KB, put it in a CSV file with each row being 3 cells of
+`concept, relation, concept`. You can get C4's assertion list with the following.
 
 ```bash
-python prep_kb.py
+curl http://mit.edu/jdhenke/www/alar/assertions.csv > assertions.csv
 ```
 
-To use your own KB in the form of a CSV file with each row being 3 cells of concept, relation, concept, do this, replacing `assertions.csv` with your file name:
+Then, to prep your KB, run the following.
 
 ```bash
+source env/bin/activate
 python prep_kb.py assertions.csv
 ```
 
-> These are convenient scripts for you to use.
-> To be more precise, the following pickle files are what is actually generated:
->
-> * `assertions.pickle` - the set of all assertion tuples
-> * `concept_pca.pickle` - `u*s` of the SVD of the assertion matrix first normalized by rows.
-> * `assertion_svd.pickle` - `(u,s,v)` of the SVD of the assertion matrix.
+> TODO: This CSV was generated using get-c4-assertions repo.
 
 ### Running
 
@@ -84,4 +73,3 @@ Once your KB has been prepped, run `. driver` from inside the repo and go to [ht
 See this [illustrated tutorial of Alar](https://docs.google.com/document/d/19KUwApiWCTEXaLUh_mrC_aCe-1VazFbHiaaFxZ6ImAo/edit?usp=sharing).
 
 ![image](https://cloud.githubusercontent.com/assets/1418690/2674280/aeb1a960-c0fe-11e3-9867-49b8a3292729.png)
-
