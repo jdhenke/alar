@@ -51,7 +51,7 @@ To use your own KB, put it in a CSV file with each row being 3 cells of
 `concept, relation, concept`. The 4th cell can be an optional truth, which defaults to 1.0. You can get C4's assertion list with the following.
 
 ```bash
-curl http://mit.edu/jdhenke/www/alar/assertions.csv > assertions.csv
+curl http://web.mit.edu/jdhenke/www/alar/assertions.csv > assertions.csv
 ```
 
 Then, to prep your KB, run the following.
