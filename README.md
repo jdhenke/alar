@@ -54,10 +54,9 @@ To use your own KB, put it in a CSV file with each row being 3 cells of
 curl http://web.mit.edu/jdhenke/www/alar/assertions.csv > assertions.csv
 ```
 
-Then, to prep your KB, run the following.
+Then, to prep your KB, run the following *without* virtualenv enabled:
 
 ```bash
-source env/bin/activate
 python prep_kb.py assertions.csv
 ```
 
@@ -65,7 +64,14 @@ python prep_kb.py assertions.csv
 
 ### Running
 
-Once your KB has been prepped, run `. driver` from inside the repo and go to [http://localhost:8080/](http://localhost:8080/).
+Once your KB has been prepped, run the following from inside your repo:
+
+```bash
+source env/bin/activate
+. driver.sh
+```
+
+Now go to [http://localhost:8080/](http://localhost:8080/).
 
 ## Using the Interface
 
